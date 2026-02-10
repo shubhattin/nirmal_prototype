@@ -6,7 +6,9 @@ import {
   UserSchemaZod,
   AccountSchemaZod,
   VerificationSchemaZod,
-  ComplaintSchemaZod
+  ComplaintSchemaZod,
+  ActionSchemaZod,
+  NotificationSchemaZod
 } from '~/db/schema_zod';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
@@ -33,7 +35,9 @@ const main = async () => {
       user: UserSchemaZod.array(),
       account: AccountSchemaZod.array(),
       verification: VerificationSchemaZod.array(),
-      complaints: ComplaintSchemaZod.array()
+      complaints: ComplaintSchemaZod.array(),
+      actions: ActionSchemaZod.array(),
+      notifications: NotificationSchemaZod.array()
     })
     .parse(JSON.parse((await readFile(`./out/${in_file_name}`)).toString()));
 

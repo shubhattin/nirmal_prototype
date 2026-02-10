@@ -11,12 +11,16 @@ export const import_data = async (confirm_env = true) => {
   const account = await db.query.account.findMany();
   const verification = await db.query.verification.findMany();
   const complaints = await db.query.complaints.findMany();
+  const actions = await db.query.actions.findMany();
+  const notifications = await db.query.notifications.findMany();
 
   const json_data = {
     user,
     account,
     verification,
-    complaints
+    complaints,
+    actions,
+    notifications
   };
 
   await make_dir('./out');

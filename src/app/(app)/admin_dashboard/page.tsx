@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 export default async function AdminDashboard() {
   const session = await getCachedSession();
   if (!session) redirect('/login');
-  if (session.user.role !== 'admin') redirect('/');
+  if (session.user.role !== 'admin' && session.user.role !== 'super_admin') redirect('/');
 
   return <AdminDashPage />;
 }
