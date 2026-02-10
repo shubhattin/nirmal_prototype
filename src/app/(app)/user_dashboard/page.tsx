@@ -7,6 +7,9 @@ export default async function UserDashboard() {
   if (!session) {
     redirect('/login');
   }
+  if (session.user.role !== 'user') {
+    redirect('/');
+  }
 
   return <UserDashPage />;
 }

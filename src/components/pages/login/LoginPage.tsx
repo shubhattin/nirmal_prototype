@@ -98,7 +98,7 @@ export default function LoginComponent() {
               onClick={() => {
                 authClient.signIn.social({
                   provider: 'google',
-                  callbackURL: window.location.origin + '/user_dashboard'
+                  callbackURL: window.location.origin + '/'
                 });
               }}
             >
