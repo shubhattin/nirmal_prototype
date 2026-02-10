@@ -43,7 +43,9 @@ export function NotificationBell() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button className="relative rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-800/50 hover:text-white">
-          <Bell className="size-5" />
+          <motion.div whileHover={{ rotate: 15 }}>
+            <Bell className="size-5" />
+          </motion.div>
           {unreadCount > 0 && (
             <motion.span
               initial={{ scale: 0 }}

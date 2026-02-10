@@ -11,18 +11,23 @@ const ROLE_ENUM = z.enum(['user', 'admin', 'worker', 'super_admin']);
 const search_users_route = protectedAdminProcedure
   .input(
     z.object({
-      query: z.string().min(1).max(100),
+      query: z.string().min(0).max(100),
       roleFilter: z.enum(['all', 'user', 'admin', 'worker', 'super_admin']).optional()
     })
   )
-  .query(async ({ input }) => {
+  .query(async ({ ctx, input }) => {
     const { query, roleFilter } = input;
     const pattern = `%${query}%`;
-    const nameCondition = or(ilike(user.name, pattern), ilike(user.email, pattern));
+
+    const searchCondition = or(ilike(user.name, pattern), ilike(user.email, pattern));
+
+    // Filter out the requesting user and all super admins
+    const exclusions = and(ne(user.id, ctx.user.id), ne(user.role, 'super_admin'));
+
     const where =
       roleFilter && roleFilter !== 'all'
-        ? and(nameCondition, eq(user.role, roleFilter))
-        : nameCondition;
+        ? and(searchCondition, exclusions, eq(user.role, roleFilter))
+        : and(searchCondition, exclusions);
 
     const users = await db
       .select({
@@ -34,8 +39,8 @@ const search_users_route = protectedAdminProcedure
         displayUsername: user.displayUsername
       })
       .from(user)
-      .where(where ?? undefined)
-      .limit(20);
+      .where(where)
+      .limit(10);
 
     return users;
   });

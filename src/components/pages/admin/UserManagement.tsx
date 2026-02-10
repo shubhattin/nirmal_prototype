@@ -79,10 +79,7 @@ export default function UserManagement() {
   );
 
   const usersQuery = useQuery(
-    trpc.super_admin.search_users.queryOptions(
-      { query: debouncedQuery },
-      { enabled: debouncedQuery.length >= 1 }
-    )
+    trpc.super_admin.search_users.queryOptions({ query: debouncedQuery })
   );
 
   const changeRoleMut = useMutation(
@@ -137,16 +134,7 @@ export default function UserManagement() {
       </Card>
 
       {/* Results */}
-      {debouncedQuery.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex flex-col items-center justify-center py-16 text-muted-foreground"
-        >
-          <Search className="mb-3 h-12 w-12 opacity-30" />
-          <p className="text-sm">Type a name or email to search for users</p>
-        </motion.div>
-      ) : usersQuery.isLoading ? (
+      {usersQuery.isLoading ? (
         <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i} className="border-border/30">
@@ -168,7 +156,11 @@ export default function UserManagement() {
           className="flex flex-col items-center justify-center py-16 text-muted-foreground"
         >
           <User className="mb-3 h-12 w-12 opacity-30" />
-          <p className="text-sm">No users found for &quot;{debouncedQuery}&quot;</p>
+          <p className="text-sm">
+            {debouncedQuery
+              ? `No users found for "${debouncedQuery}"`
+              : 'No users found in the system'}
+          </p>
         </motion.div>
       ) : (
         <motion.div
@@ -244,11 +236,6 @@ export default function UserManagement() {
                           <SelectItem value="admin">
                             <span className="flex items-center gap-1.5">
                               <Shield className="h-3 w-3" /> Admin
-                            </span>
-                          </SelectItem>
-                          <SelectItem value="super_admin">
-                            <span className="flex items-center gap-1.5">
-                              <Crown className="h-3 w-3" /> Super Admin
                             </span>
                           </SelectItem>
                         </SelectContent>

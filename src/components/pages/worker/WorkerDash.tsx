@@ -262,6 +262,7 @@ function ActionsTab() {
               visible: { opacity: 1, y: 0, scale: 1 }
             }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            whileHover={{ y: -5, transition: { duration: 0.2 } }}
           >
             <Card
               className="cursor-pointer border-border/30 transition-all duration-300 hover:border-cyan-500/30 hover:shadow-lg hover:shadow-cyan-500/5"

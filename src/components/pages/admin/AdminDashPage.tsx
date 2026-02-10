@@ -206,6 +206,29 @@ const resolutionRate = 90; // percent
 type ComplaintsList = inferRouterOutputs<AppRouter>['complaints']['list_complaints'];
 type ComplaintItem = ComplaintsList[number];
 
+const containerVars = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVars = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 260,
+      damping: 20
+    }
+  }
+};
+
 function AdminMain() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -435,7 +458,7 @@ function AdminMain() {
   const formatLocation = (lat: number, lng: number) => `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
   return (
-    <div className="space-y-6">
+    <motion.div className="space-y-6" variants={containerVars} initial="hidden" animate="visible">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={<ClipboardList className="size-5 text-primary" />}
@@ -460,374 +483,313 @@ function AdminMain() {
       </div>
 
       {/* Complaints Table */}
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Recent Complaints</CardTitle>
-          <CardDescription>Manage and track complaint resolution status</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {complaints_q.isLoading || complaints_q.isPending ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="flex gap-4">
-                  <Skeleton className="h-12 flex-1" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-32" />
-                  <Skeleton className="h-12 w-16" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <Table className="rounded-lg">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {complaintsData.length > 0 ? (
-                  complaintsData.map((complaint) => {
-                    return (
-                      <TableRow key={complaint.id}>
-                        <TableCell className="font-medium">
-                          {complaint.id.substring(0, 5)}
-                        </TableCell>
-                        <TableCell>
-                          {complaint.user?.name || complaint.user?.displayUsername || 'N/A'}
-                        </TableCell>
-                        <TableCell className="flex items-center gap-1">
-                          <MapPin className="size-3 text-muted-foreground" />
-                          {formatLocation(complaint.latitude, complaint.longitude)}
-                        </TableCell>
-                        <TableCell className="capitalize">{complaint.category}</TableCell>
-                        <TableCell className="max-w-xs truncate">{complaint.title}</TableCell>
-                        <TableCell>
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
-                              complaint.status === 'resolved'
-                                ? 'border-emerald-700 bg-emerald-900/30 text-emerald-400'
-                                : complaint.status === 'in_progress'
-                                  ? 'border-cyan-700 bg-cyan-900/30 text-cyan-400'
-                                  : 'border-amber-700 bg-amber-900/30 text-amber-400'
-                            }`}
-                          >
-                            {formatStatus(complaint.status)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {complaint.created_at ? formatDate(complaint.created_at) : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  disabled={update_status_mut.isPending}
-                                  aria-label="Complaint actions"
-                                >
-                                  <MoreHorizontal className="size-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44">
-                                {(complaint.status === 'open' ||
-                                  complaint.status === 'in_progress') && (
-                                  <>
-                                    <DropdownMenuLabel>Workflow</DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => setReviewComplaintId(complaint.id)}
-                                    >
-                                      <ClipboardList className="mr-2 size-4" />
-                                      Review
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setCloseDialogComplaintId(complaint.id)}
-                                      className="text-amber-600 focus:text-amber-600"
-                                      disabled={update_status_mut.isPending}
-                                    >
-                                      <XCircle className="mr-2 size-4" />
-                                      Close
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                  </>
-                                )}
-                                {(complaint.status === 'resolved' ||
-                                  complaint.status === 'closed') && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() => setReviewComplaintId(complaint.id)}
-                                    >
-                                      <ClipboardList className="mr-2 size-4" />
-                                      View
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                  </>
-                                )}
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteClick(complaint.id)}
-                                  disabled={delete_complaint_mut.isPending}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="mr-2 size-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
+      <motion.div variants={itemVars}>
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Recent Complaints</CardTitle>
+            <CardDescription>Manage and track complaint resolution status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {complaints_q.isLoading || complaints_q.isPending ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex gap-4">
+                    <Skeleton className="h-12 flex-1" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-32" />
+                    <Skeleton className="h-12 w-16" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Table className="rounded-lg">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground">
-                      No complaints found
-                    </TableCell>
+                    <TableHead>ID</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {complaintsData.length > 0 ? (
+                    complaintsData.map((complaint) => {
+                      return (
+                        <TableRow key={complaint.id}>
+                          <TableCell className="font-medium">
+                            {complaint.id.substring(0, 5)}
+                          </TableCell>
+                          <TableCell>
+                            {complaint.user?.name || complaint.user?.displayUsername || 'N/A'}
+                          </TableCell>
+                          <TableCell className="flex items-center gap-1">
+                            <MapPin className="size-3 text-muted-foreground" />
+                            {formatLocation(complaint.latitude, complaint.longitude)}
+                          </TableCell>
+                          <TableCell className="capitalize">{complaint.category}</TableCell>
+                          <TableCell className="max-w-xs truncate">{complaint.title}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${
+                                complaint.status === 'resolved'
+                                  ? 'border-emerald-700 bg-emerald-900/30 text-emerald-400'
+                                  : complaint.status === 'in_progress'
+                                    ? 'border-cyan-700 bg-cyan-900/30 text-cyan-400'
+                                    : 'border-amber-700 bg-amber-900/30 text-amber-400'
+                              }`}
+                            >
+                              {formatStatus(complaint.status)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            {complaint.created_at ? formatDate(complaint.created_at) : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    disabled={update_status_mut.isPending}
+                                    aria-label="Complaint actions"
+                                  >
+                                    <MoreHorizontal className="size-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44">
+                                  {(complaint.status === 'open' ||
+                                    complaint.status === 'in_progress') && (
+                                    <>
+                                      <DropdownMenuLabel>Workflow</DropdownMenuLabel>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        onClick={() => setReviewComplaintId(complaint.id)}
+                                      >
+                                        <ClipboardList className="mr-2 size-4" />
+                                        Review
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => setCloseDialogComplaintId(complaint.id)}
+                                        className="text-amber-600 focus:text-amber-600"
+                                        disabled={update_status_mut.isPending}
+                                      >
+                                        <XCircle className="mr-2 size-4" />
+                                        Close
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                    </>
+                                  )}
+                                  {(complaint.status === 'resolved' ||
+                                    complaint.status === 'closed') && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => setReviewComplaintId(complaint.id)}
+                                      >
+                                        <ClipboardList className="mr-2 size-4" />
+                                        View
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                    </>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteClick(complaint.id)}
+                                    disabled={delete_complaint_mut.isPending}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <Trash2 className="mr-2 size-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                        No complaints found
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       <div className="grid gap-4 lg:grid-cols-4">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Complaints Trend & Performance</CardTitle>
-            <CardDescription>Monthly statistics with resolution time analysis</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                raised: { label: 'Raised', color: 'hsl(188 94% 43%)' },
-                resolved: { label: 'Resolved', color: 'hsl(152.4 76.2% 40%)' },
-                pending: { label: 'Pending', color: 'hsl(48 96% 53%)' },
-                avgResolutionTime: { label: 'Avg Time (hrs)', color: 'hsl(0 84% 60%)' }
-              }}
-              className="h-80"
-            >
-              <ComposedChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis yAxisId="count" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis
-                  yAxisId="time"
-                  orientation="right"
-                  domain={[15, 35]}
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
-                <ChartTooltip
-                  content={({ payload, label }) => {
-                    if (!payload || payload.length === 0) return null;
-                    return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md">
-                        <p className="mb-2 font-medium">{label}</p>
-                        {payload.map((entry, index) => (
-                          <p key={index} className="text-sm">
-                            <span style={{ color: entry.color }}>{entry.dataKey}: </span>
-                            {entry.value}
-                            {entry.dataKey === 'avgResolutionTime' ? 'h' : ''}
-                          </p>
-                        ))}
-                      </div>
-                    );
-                  }}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Area
-                  yAxisId="count"
-                  dataKey="raised"
-                  stackId="1"
-                  stroke="var(--color-raised)"
-                  fill="var(--color-raised)"
-                  fillOpacity={0.6}
-                />
-                <Area
-                  yAxisId="count"
-                  dataKey="resolved"
-                  stackId="2"
-                  stroke="var(--color-resolved)"
-                  fill="var(--color-resolved)"
-                  fillOpacity={0.8}
-                />
-                <Bar
-                  yAxisId="count"
-                  dataKey="pending"
-                  fill="var(--color-pending)"
-                  radius={[4, 4, 0, 0]}
-                  opacity={0.7}
-                />
-                <Line
-                  yAxisId="time"
-                  type="monotone"
-                  dataKey="avgResolutionTime"
-                  stroke="var(--color-avgResolutionTime)"
-                  strokeWidth={3}
-                  dot={{ fill: 'var(--color-avgResolutionTime)', strokeWidth: 2, r: 4 }}
-                />
-              </ComposedChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Resolution Workflow</CardTitle>
-            <CardDescription>Process efficiency funnel</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                value: { label: 'Count', color: 'hsl(158 64% 52%)' }
-              }}
-              className="h-80"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <FunnelChart>
-                  <Funnel dataKey="value" data={resolutionFunnelData} isAnimationActive />
-                  <ChartTooltip
-                    content={({ payload, label }) => {
-                      if (!payload || payload.length === 0) return null;
-                      const data = payload[0].payload;
-                      const previousValue =
-                        resolutionFunnelData[resolutionFunnelData.indexOf(data) - 1]?.value ||
-                        data.value;
-                      const conversion = ((data.value / previousValue) * 100).toFixed(1);
-
-                      return (
-                        <div className="rounded-lg border bg-background p-3 shadow-md">
-                          <p className="font-medium">{data.name}</p>
-                          <p className="text-sm">Count: {data.value}</p>
-                          {previousValue !== data.value && (
-                            <p className="text-sm text-muted-foreground">
-                              Conversion: {conversion}%
-                            </p>
-                          )}
-                        </div>
-                      );
-                    }}
-                  />
-                </FunnelChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Analysis</CardTitle>
-            <CardDescription>Complaints by type with severity and resolution rates</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                count: { label: 'Total', color: 'hsl(217 91% 60%)' },
-                resolved: { label: 'Resolved', color: 'hsl(152.4 76.2% 40%)' },
-                severity: { label: 'Avg Severity', color: 'hsl(0 84% 60%)' }
-              }}
-              className="h-72"
-            >
-              <ComposedChart data={categoryData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis
-                  dataKey="category"
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(var(--muted-foreground))"
-                />
-                <YAxis yAxisId="count" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis
-                  yAxisId="severity"
-                  orientation="right"
-                  domain={[0, 5]}
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
-                <ChartTooltip
-                  content={({ payload, label }) => {
-                    if (!payload || payload.length === 0) return null;
-                    const data = payload[0].payload;
-                    const resolutionRate = ((data.resolved / data.count) * 100).toFixed(1);
-
-                    return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md">
-                        <p className="mb-2 font-medium">{label}</p>
-                        <p className="text-sm">Total: {data.count}</p>
-                        <p className="text-sm">
-                          Resolved: {data.resolved} ({resolutionRate}%)
-                        </p>
-                        <p className="text-sm">Avg Severity: {data.severity}/5</p>
-                      </div>
-                    );
-                  }}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Bar
-                  yAxisId="count"
-                  dataKey="count"
-                  fill="var(--color-count)"
-                  radius={[4, 4, 0, 0]}
-                  opacity={0.6}
-                />
-                <Bar
-                  yAxisId="count"
-                  dataKey="resolved"
-                  fill="var(--color-resolved)"
-                  radius={[4, 4, 0, 0]}
-                  opacity={0.8}
-                />
-                <Line
-                  yAxisId="severity"
-                  type="monotone"
-                  dataKey="severity"
-                  stroke="var(--color-severity)"
-                  strokeWidth={3}
-                  dot={{ fill: 'var(--color-severity)', strokeWidth: 2, r: 5 }}
-                />
-              </ComposedChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Priority Distribution</CardTitle>
-            <CardDescription>Complaints by priority with resolution times</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                count: { label: 'Count', color: 'hsl(217 91% 60%)' },
-                avgResolution: { label: 'Avg Resolution (hrs)', color: 'hsl(47 96% 53%)' }
-              }}
-              className="h-72"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={priorityDistribution}>
+        <motion.div variants={itemVars} className="lg:col-span-2">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Complaints Trend & Performance</CardTitle>
+              <CardDescription>Monthly statistics with resolution time analysis</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  raised: { label: 'Raised', color: 'hsl(188 94% 43%)' },
+                  resolved: { label: 'Resolved', color: 'hsl(152.4 76.2% 40%)' },
+                  pending: { label: 'Pending', color: 'hsl(48 96% 53%)' },
+                  avgResolutionTime: { label: 'Avg Time (hrs)', color: 'hsl(0 84% 60%)' }
+                }}
+                className="h-80"
+              >
+                <ComposedChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                  <XAxis dataKey="priority" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis yAxisId="count" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                   <YAxis
                     yAxisId="time"
                     orientation="right"
+                    domain={[15, 35]}
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                  />
+                  <ChartTooltip
+                    content={({ payload, label }) => {
+                      if (!payload || payload.length === 0) return null;
+                      return (
+                        <div className="rounded-lg border bg-background p-3 shadow-md">
+                          <p className="mb-2 font-medium">{label}</p>
+                          {payload.map((entry, index) => (
+                            <p key={index} className="text-sm">
+                              <span style={{ color: entry.color }}>{entry.dataKey}: </span>
+                              {entry.value}
+                              {entry.dataKey === 'avgResolutionTime' ? 'h' : ''}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Area
+                    yAxisId="count"
+                    dataKey="raised"
+                    stackId="1"
+                    stroke="var(--color-raised)"
+                    fill="var(--color-raised)"
+                    fillOpacity={0.6}
+                  />
+                  <Area
+                    yAxisId="count"
+                    dataKey="resolved"
+                    stackId="2"
+                    stroke="var(--color-resolved)"
+                    fill="var(--color-resolved)"
+                    fillOpacity={0.8}
+                  />
+                  <Bar
+                    yAxisId="count"
+                    dataKey="pending"
+                    fill="var(--color-pending)"
+                    radius={[4, 4, 0, 0]}
+                    opacity={0.7}
+                  />
+                  <Line
+                    yAxisId="time"
+                    type="monotone"
+                    dataKey="avgResolutionTime"
+                    stroke="var(--color-avgResolutionTime)"
+                    strokeWidth={3}
+                    dot={{ fill: 'var(--color-avgResolutionTime)', strokeWidth: 2, r: 4 }}
+                  />
+                </ComposedChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVars} className="lg:col-span-2">
+          <Card className="h-full lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Resolution Workflow</CardTitle>
+              <CardDescription>Process efficiency funnel</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  value: { label: 'Count', color: 'hsl(158 64% 52%)' }
+                }}
+                className="h-80"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <FunnelChart>
+                    <Funnel dataKey="value" data={resolutionFunnelData} isAnimationActive />
+                    <ChartTooltip
+                      content={({ payload, label }) => {
+                        if (!payload || payload.length === 0) return null;
+                        const data = payload[0].payload;
+                        const previousValue =
+                          resolutionFunnelData[resolutionFunnelData.indexOf(data) - 1]?.value ||
+                          data.value;
+                        const conversion = ((data.value / previousValue) * 100).toFixed(1);
+
+                        return (
+                          <div className="rounded-lg border bg-background p-3 shadow-md">
+                            <p className="font-medium">{data.name}</p>
+                            <p className="text-sm">Count: {data.value}</p>
+                            {previousValue !== data.value && (
+                              <p className="text-sm text-muted-foreground">
+                                Conversion: {conversion}%
+                              </p>
+                            )}
+                          </div>
+                        );
+                      }}
+                    />
+                  </FunnelChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <motion.div variants={itemVars}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Category Analysis</CardTitle>
+              <CardDescription>
+                Complaints by type with severity and resolution rates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  count: { label: 'Total', color: 'hsl(217 91% 60%)' },
+                  resolved: { label: 'Resolved', color: 'hsl(152.4 76.2% 40%)' },
+                  severity: { label: 'Avg Severity', color: 'hsl(0 84% 60%)' }
+                }}
+                className="h-72"
+              >
+                <ComposedChart data={categoryData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis
+                    dataKey="category"
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis yAxisId="count" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis
+                    yAxisId="severity"
+                    orientation="right"
+                    domain={[0, 5]}
                     stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                   />
@@ -835,242 +797,325 @@ function AdminMain() {
                     content={({ payload, label }) => {
                       if (!payload || payload.length === 0) return null;
                       const data = payload[0].payload;
+                      const resolutionRate = ((data.resolved / data.count) * 100).toFixed(1);
 
                       return (
                         <div className="rounded-lg border bg-background p-3 shadow-md">
-                          <p className="mb-2 font-medium">{label} Priority</p>
-                          <p className="text-sm">Count: {data.count}</p>
-                          <p className="text-sm">Avg Resolution: {data.avgResolution}h</p>
+                          <p className="mb-2 font-medium">{label}</p>
+                          <p className="text-sm">Total: {data.count}</p>
+                          <p className="text-sm">
+                            Resolved: {data.resolved} ({resolutionRate}%)
+                          </p>
+                          <p className="text-sm">Avg Severity: {data.severity}/5</p>
                         </div>
                       );
                     }}
                   />
                   <ChartLegend content={<ChartLegendContent />} />
-                  {priorityDistribution.map((entry, index) => (
-                    <Bar
-                      key={index}
-                      yAxisId="count"
-                      dataKey="count"
-                      fill={entry.color}
-                      radius={[4, 4, 0, 0]}
-                      opacity={0.8}
-                    />
-                  ))}
+                  <Bar
+                    yAxisId="count"
+                    dataKey="count"
+                    fill="var(--color-count)"
+                    radius={[4, 4, 0, 0]}
+                    opacity={0.6}
+                  />
+                  <Bar
+                    yAxisId="count"
+                    dataKey="resolved"
+                    fill="var(--color-resolved)"
+                    radius={[4, 4, 0, 0]}
+                    opacity={0.8}
+                  />
                   <Line
-                    yAxisId="time"
+                    yAxisId="severity"
                     type="monotone"
-                    dataKey="avgResolution"
-                    stroke="var(--color-avgResolution)"
+                    dataKey="severity"
+                    stroke="var(--color-severity)"
                     strokeWidth={3}
-                    dot={{ fill: 'var(--color-avgResolution)', strokeWidth: 2, r: 4 }}
+                    dot={{ fill: 'var(--color-severity)', strokeWidth: 2, r: 5 }}
                   />
                 </ComposedChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVars}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Priority Distribution</CardTitle>
+              <CardDescription>Complaints by priority with resolution times</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  count: { label: 'Count', color: 'hsl(217 91% 60%)' },
+                  avgResolution: { label: 'Avg Resolution (hrs)', color: 'hsl(47 96% 53%)' }
+                }}
+                className="h-72"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={priorityDistribution}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                      opacity={0.3}
+                    />
+                    <XAxis dataKey="priority" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis yAxisId="count" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                    <YAxis
+                      yAxisId="time"
+                      orientation="right"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <ChartTooltip
+                      content={({ payload, label }) => {
+                        if (!payload || payload.length === 0) return null;
+                        const data = payload[0].payload;
+
+                        return (
+                          <div className="rounded-lg border bg-background p-3 shadow-md">
+                            <p className="mb-2 font-medium">{label} Priority</p>
+                            <p className="text-sm">Count: {data.count}</p>
+                            <p className="text-sm">Avg Resolution: {data.avgResolution}h</p>
+                          </div>
+                        );
+                      }}
+                    />
+                    <ChartLegend content={<ChartLegendContent />} />
+                    {priorityDistribution.map((entry, index) => (
+                      <Bar
+                        key={index}
+                        yAxisId="count"
+                        dataKey="count"
+                        fill={entry.color}
+                        radius={[4, 4, 0, 0]}
+                        opacity={0.8}
+                      />
+                    ))}
+                    <Line
+                      yAxisId="time"
+                      type="monotone"
+                      dataKey="avgResolution"
+                      stroke="var(--color-avgResolution)"
+                      strokeWidth={3}
+                      dot={{ fill: 'var(--color-avgResolution)', strokeWidth: 2, r: 4 }}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Hourly Activity Pattern</CardTitle>
-            <CardDescription>Complaints and staff utilization by time</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                complaints: { label: 'Complaints', color: 'hsl(0 84% 60%)' },
-                staff: { label: 'Active Staff', color: 'hsl(152.4 76.2% 40%)' }
-              }}
-              className="h-80"
-            >
-              <ComposedChart data={timeSeriesData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-                <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis yAxisId="complaints" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis
-                  yAxisId="staff"
-                  orientation="right"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
-                <ChartTooltip
-                  content={({ payload, label }) => {
-                    if (!payload || payload.length === 0) return null;
-                    return (
-                      <div className="rounded-lg border bg-background p-3 shadow-md">
-                        <p className="mb-2 font-medium">{label}</p>
-                        {payload.map((entry, index) => (
-                          <p key={index} className="text-sm">
-                            <span style={{ color: entry.color }}>{entry.dataKey}: </span>
-                            {entry.value}
-                          </p>
-                        ))}
-                      </div>
-                    );
-                  }}
-                />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Area
-                  yAxisId="complaints"
-                  dataKey="complaints"
-                  stroke="var(--color-complaints)"
-                  fill="var(--color-complaints)"
-                  fillOpacity={0.3}
-                />
-                <Line
-                  yAxisId="staff"
-                  type="monotone"
-                  dataKey="staff"
-                  stroke="var(--color-staff)"
-                  strokeWidth={3}
-                  dot={{ fill: 'var(--color-staff)', strokeWidth: 2, r: 4 }}
-                />
-              </ComposedChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resolution Rate</CardTitle>
-            <CardDescription>Closed within SLA</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{ rate: { label: 'Resolution', color: 'hsl(152.4 76.2% 40%)' } }}
-              className="h-80"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart
-                  data={[{ name: 'rate', value: resolutionRate, bg: 100 }]}
-                  innerRadius={60}
-                  outerRadius={120}
-                  startAngle={90}
-                  endAngle={-270}
-                >
-                  <defs>
-                    <linearGradient id="rateGradient2" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#06b6d4" />
-                      <stop offset="100%" stopColor="#10b981" />
-                    </linearGradient>
-                  </defs>
-                  <RadialBar
-                    dataKey="bg"
-                    fill="hsl(var(--muted))"
-                    cornerRadius={8}
-                    background
-                    isAnimationActive={false}
+        <motion.div variants={itemVars}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Hourly Activity Pattern</CardTitle>
+              <CardDescription>Complaints and staff utilization by time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  complaints: { label: 'Complaints', color: 'hsl(0 84% 60%)' },
+                  staff: { label: 'Active Staff', color: 'hsl(152.4 76.2% 40%)' }
+                }}
+                className="h-80"
+              >
+                <ComposedChart data={timeSeriesData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
+                  <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis yAxisId="complaints" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                  <YAxis
+                    yAxisId="staff"
+                    orientation="right"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
                   />
-                  <RadialBar dataKey="value" cornerRadius={8} fill="url(#rateGradient2)" />
-                  <text
-                    x="50%"
-                    y="50%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-foreground text-2xl font-bold"
+                  <ChartTooltip
+                    content={({ payload, label }) => {
+                      if (!payload || payload.length === 0) return null;
+                      return (
+                        <div className="rounded-lg border bg-background p-3 shadow-md">
+                          <p className="mb-2 font-medium">{label}</p>
+                          {payload.map((entry, index) => (
+                            <p key={index} className="text-sm">
+                              <span style={{ color: entry.color }}>{entry.dataKey}: </span>
+                              {entry.value}
+                            </p>
+                          ))}
+                        </div>
+                      );
+                    }}
+                  />
+                  <ChartLegend content={<ChartLegendContent />} />
+                  <Area
+                    yAxisId="complaints"
+                    dataKey="complaints"
+                    stroke="var(--color-complaints)"
+                    fill="var(--color-complaints)"
+                    fillOpacity={0.3}
+                  />
+                  <Line
+                    yAxisId="staff"
+                    type="monotone"
+                    dataKey="staff"
+                    stroke="var(--color-staff)"
+                    strokeWidth={3}
+                    dot={{ fill: 'var(--color-staff)', strokeWidth: 2, r: 4 }}
+                  />
+                </ComposedChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div variants={itemVars}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Resolution Rate</CardTitle>
+              <CardDescription>Closed within SLA</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{ rate: { label: 'Resolution', color: 'hsl(152.4 76.2% 40%)' } }}
+                className="h-80"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadialBarChart
+                    data={[{ name: 'rate', value: resolutionRate, bg: 100 }]}
+                    innerRadius={60}
+                    outerRadius={120}
+                    startAngle={90}
+                    endAngle={-270}
                   >
-                    {resolutionRate}%
-                  </text>
-                  <text
-                    x="50%"
-                    y="55%"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    className="fill-muted-foreground text-sm"
-                  >
-                    Resolution Rate
-                  </text>
-                </RadialBarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
+                    <defs>
+                      <linearGradient id="rateGradient2" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                    </defs>
+                    <RadialBar
+                      dataKey="bg"
+                      fill="hsl(var(--muted))"
+                      cornerRadius={8}
+                      background
+                      isAnimationActive={false}
+                    />
+                    <RadialBar dataKey="value" cornerRadius={8} fill="url(#rateGradient2)" />
+                    <text
+                      x="50%"
+                      y="50%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-foreground text-2xl font-bold"
+                    >
+                      {resolutionRate}%
+                    </text>
+                    <text
+                      x="50%"
+                      y="55%"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      className="fill-muted-foreground text-sm"
+                    >
+                      Resolution Rate
+                    </text>
+                  </RadialBarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-1">
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Leaderboard</CardTitle>
-            <CardDescription>Localities ranked by combined metrics</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {localityPerformance
-                .sort((a, b) => {
-                  const scoreA =
-                    5 -
-                    (a.avgResolutionTime - 15) / 3 +
-                    a.citizenSatisfaction -
-                    a.openComplaints / 20;
-                  const scoreB =
-                    5 -
-                    (b.avgResolutionTime - 15) / 3 +
-                    b.citizenSatisfaction -
-                    b.openComplaints / 20;
-                  return scoreB - scoreA;
-                })
-                .slice(0, 6)
-                .map((locality, index) => {
-                  const score =
-                    5 -
-                    (locality.avgResolutionTime - 15) / 3 +
-                    locality.citizenSatisfaction -
-                    locality.openComplaints / 20;
-                  const rank = index + 1;
-                  const medalColor =
-                    rank === 1
-                      ? 'text-yellow-500'
-                      : rank === 2
-                        ? 'text-gray-400'
-                        : rank === 3
-                          ? 'text-amber-600'
-                          : 'text-muted-foreground';
-                  const performance =
-                    locality.avgResolutionTime < 22 && locality.citizenSatisfaction > 4
-                      ? 'Excellent'
-                      : locality.avgResolutionTime < 25 && locality.citizenSatisfaction > 3.5
-                        ? 'Good'
-                        : 'Needs Focus';
-                  const performanceColor =
-                    performance === 'Excellent'
-                      ? 'text-green-600 bg-green-50 border-green-200'
-                      : performance === 'Good'
-                        ? 'text-yellow-600 bg-yellow-50 border-yellow-200'
-                        : 'text-red-600 bg-red-50 border-red-200';
+        <motion.div variants={itemVars}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Leaderboard</CardTitle>
+              <CardDescription>Localities ranked by combined metrics</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {localityPerformance
+                  .sort((a, b) => {
+                    const scoreA =
+                      5 -
+                      (a.avgResolutionTime - 15) / 3 +
+                      a.citizenSatisfaction -
+                      a.openComplaints / 20;
+                    const scoreB =
+                      5 -
+                      (b.avgResolutionTime - 15) / 3 +
+                      b.citizenSatisfaction -
+                      b.openComplaints / 20;
+                    return scoreB - scoreA;
+                  })
+                  .slice(0, 6)
+                  .map((locality, index) => {
+                    const score =
+                      5 -
+                      (locality.avgResolutionTime - 15) / 3 +
+                      locality.citizenSatisfaction -
+                      locality.openComplaints / 20;
+                    const rank = index + 1;
+                    const medalColor =
+                      rank === 1
+                        ? 'text-yellow-500'
+                        : rank === 2
+                          ? 'text-gray-400'
+                          : rank === 3
+                            ? 'text-amber-600'
+                            : 'text-muted-foreground';
+                    const performance =
+                      locality.avgResolutionTime < 22 && locality.citizenSatisfaction > 4
+                        ? 'Excellent'
+                        : locality.avgResolutionTime < 25 && locality.citizenSatisfaction > 3.5
+                          ? 'Good'
+                          : 'Needs Focus';
+                    const performanceColor =
+                      performance === 'Excellent'
+                        ? 'text-green-600 bg-green-50 border-green-200'
+                        : performance === 'Good'
+                          ? 'text-yellow-600 bg-yellow-50 border-yellow-200'
+                          : 'text-red-600 bg-red-50 border-red-200';
 
-                  return (
-                    <div key={locality.locality} className="space-y-2 rounded-lg border p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className={`text-lg font-bold ${medalColor}`}>#{rank}</span>
-                          <span className="font-medium">{locality.locality}</span>
+                    return (
+                      <div key={locality.locality} className="space-y-2 rounded-lg border p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-lg font-bold ${medalColor}`}>#{rank}</span>
+                            <span className="font-medium">{locality.locality}</span>
+                          </div>
+                          <span
+                            className={`rounded-full border px-2 py-1 text-xs font-medium ${performanceColor}`}
+                          >
+                            {performance}
+                          </span>
                         </div>
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs font-medium ${performanceColor}`}
-                        >
-                          {performance}
-                        </span>
+                        <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
+                          <div>📋 {locality.openComplaints} open</div>
+                          <div>⏱️ {locality.avgResolutionTime}h avg</div>
+                          <div>😊 {locality.citizenSatisfaction}/5 rating</div>
+                          <div>👥 {(locality.population / 1000).toFixed(0)}k people</div>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-linear-to-r from-green-500 to-emerald-600"
+                            style={{ width: `${Math.min(100, (score / 8) * 100)}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                        <div>📋 {locality.openComplaints} open</div>
-                        <div>⏱️ {locality.avgResolutionTime}h avg</div>
-                        <div>😊 {locality.citizenSatisfaction}/5 rating</div>
-                        <div>👥 {(locality.population / 1000).toFixed(0)}k people</div>
-                      </div>
-                      <div className="h-2 w-full rounded-full bg-muted">
-                        <div
-                          className="h-2 rounded-full bg-linear-to-r from-green-500 to-emerald-600"
-                          style={{ width: `${Math.min(100, (score / 8) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </CardContent>
-        </Card>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       <Dialog
@@ -1405,7 +1450,7 @@ function AdminMain() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </motion.div>
   );
 }
 
@@ -1615,14 +1660,16 @@ export default function AdminDashPage() {
 
 function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardDescription>{label}</CardDescription>
-          {icon}
-        </div>
-        <CardTitle className="text-2xl">{value}</CardTitle>
-      </CardHeader>
-    </Card>
+    <motion.div variants={itemVars} whileHover={{ y: -5, transition: { duration: 0.2 } }}>
+      <Card className="overflow-hidden transition-all hover:border-primary/20 hover:shadow-md hover:shadow-primary/10">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardDescription>{label}</CardDescription>
+            {icon}
+          </div>
+          <CardTitle className="text-2xl">{value}</CardTitle>
+        </CardHeader>
+      </Card>
+    </motion.div>
   );
 }
