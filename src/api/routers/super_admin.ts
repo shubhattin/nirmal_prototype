@@ -4,6 +4,7 @@ import { user } from '~/db/schema';
 import { z } from 'zod';
 import { eq, ilike, or, and, ne } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { redis } from '~/db/redis';
 
 const ROLE_ENUM = z.enum(['user', 'admin', 'worker', 'super_admin']);
 
@@ -71,6 +72,21 @@ const change_user_role_route = protectedSuperAdminProcedure
     }
 
     await db.update(user).set({ role: input.role }).where(eq(user.id, input.userId));
+
+    // Invalidate Redis cache
+    const sessionKey = `active-sessions-${input.userId}`;
+    const sessionValue = (await redis.get(sessionKey)) as
+      | { token: string; expiresAt: number }[]
+      | null;
+
+    if (sessionValue) {
+      const keysToDelete = [sessionKey];
+      if (Array.isArray(sessionValue)) {
+        keysToDelete.push(...sessionValue.map((s) => s.token));
+      }
+
+      await redis.del(...keysToDelete);
+    }
 
     return { success: true };
   });

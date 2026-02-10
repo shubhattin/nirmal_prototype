@@ -49,15 +49,13 @@ async function createNotification(params: {
   title: string;
   description?: string;
   complaintId?: string;
-  actionId?: number;
 }) {
   await db.insert(notifications).values({
     user_id: params.userId,
     sent_by_id: params.sentById,
     title: params.title,
     description: params.description,
-    complaint_id: params.complaintId,
-    action_id: params.actionId
+    complaint_id: params.complaintId
   });
 }
 
@@ -199,8 +197,7 @@ const assign_worker_route = protectedAdminProcedure
       sentById: ctx.user.id,
       title: 'New Task Assigned',
       description: `You have been assigned to complaint: "${complaint.title}". Please take action and submit evidence.`,
-      complaintId,
-      actionId: newAction.id
+      complaintId
     });
 
     return { actionId: newAction.id };
@@ -275,7 +272,6 @@ const review_action_route = protectedAdminProcedure
             user_id: action.complaint.user_id,
             sent_by_id: ctx.user.id,
             complaint_id: action.complaint_id,
-            action_id: actionId,
             title: 'Complaint Resolved',
             description: `Your complaint "${action.complaint.title}" has been resolved.`
           });
@@ -286,7 +282,6 @@ const review_action_route = protectedAdminProcedure
           user_id: action.assigned_worker_id,
           sent_by_id: ctx.user.id,
           complaint_id: action.complaint_id,
-          action_id: actionId,
           title: 'Action Approved',
           description: `Your work on "${action.complaint.title}" has been approved. Great job!`
         });
@@ -313,7 +308,6 @@ const review_action_route = protectedAdminProcedure
           user_id: action.assigned_worker_id,
           sent_by_id: ctx.user.id,
           complaint_id: action.complaint_id,
-          action_id: retryAction.id,
           title: 'Action Rejected — Retry Required',
           description: notes
             ? `Your submission for "${action.complaint.title}" was rejected. Admin notes: ${notes}`

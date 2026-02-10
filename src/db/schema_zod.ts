@@ -33,6 +33,7 @@ export const VerificationSchemaZod = createSelectSchema(verification, {
 export const ComplaintSchemaZod = createSelectSchema(complaints, {
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
+  resolved_at: z.coerce.date().nullable(),
   category: CATEGORY_ENUM_SCHEMA,
   status: STATUS_ENUM_SCHEMA
 });

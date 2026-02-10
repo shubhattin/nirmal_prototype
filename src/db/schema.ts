@@ -32,7 +32,7 @@ export const ACTION_STATUS_ENUM_SCHEMA = z.enum([
 
 export const complaints = pgTable('complaints', {
   id: uuid().primaryKey().defaultRandom(),
-  user_id: text().references(() => user.id),
+  user_id: text().references(() => user.id, { onDelete: 'cascade' }),
   title: text().notNull(),
   description: text(),
   status: text().notNull().default('open').$type<z.infer<typeof STATUS_ENUM_SCHEMA>>(),
@@ -41,7 +41,7 @@ export const complaints = pgTable('complaints', {
   latitude: real().notNull(),
   image_s3_key: text(),
   resolved_at: timestamp(),
-  resolved_by: text().references(() => user.id),
+  resolved_by: text().references(() => user.id, { onDelete: 'set null' }),
   created_at: timestamp().notNull().defaultNow(),
   updated_at: timestamp()
     .notNull()
@@ -51,7 +51,7 @@ export const complaints = pgTable('complaints', {
 export const user_data = pgTable('user_data', {
   id: text()
     .primaryKey()
-    .references(() => user.id),
+    .references(() => user.id, { onDelete: 'cascade' }),
   reward_points: integer().notNull().default(0),
   address: text()
 });
@@ -60,15 +60,13 @@ export const notifications = pgTable('notifications', {
   id: serial().primaryKey(),
   /** sent to the user id */
   user_id: text()
-    .references(() => user.id)
+    .references(() => user.id, { onDelete: 'cascade' })
     .notNull(),
   sent_by_id: text()
-    .references(() => user.id)
+    .references(() => user.id, { onDelete: 'cascade' })
     .notNull(),
   /** Optional complaint id to which it is connected */
-  complaint_id: uuid().references(() => complaints.id),
-  /** Optional action id to which it is connected */
-  action_id: integer().references(() => actions.id),
+  complaint_id: uuid().references(() => complaints.id, { onDelete: 'set null' }),
   read: boolean().notNull().default(false),
   title: text().notNull(),
   description: text(),
@@ -81,10 +79,10 @@ export const notifications = pgTable('notifications', {
 export const actions = pgTable('actions', {
   id: serial().primaryKey(),
   complaint_id: uuid()
-    .references(() => complaints.id)
+    .references(() => complaints.id, { onDelete: 'cascade' })
     .notNull(),
   assigned_worker_id: text()
-    .references(() => user.id)
+    .references(() => user.id, { onDelete: 'cascade' })
     .notNull(),
   status: text()
     .notNull()
@@ -135,9 +133,5 @@ export const notificationRelations = relations(notifications, ({ one }) => ({
   complaint: one(complaints, {
     fields: [notifications.complaint_id],
     references: [complaints.id]
-  }),
-  action: one(actions, {
-    fields: [notifications.action_id],
-    references: [actions.id]
   })
 }));
