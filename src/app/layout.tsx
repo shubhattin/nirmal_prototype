@@ -20,7 +20,7 @@ export default async function RootLayout({
   const session = await getCachedSession();
 
   return (
-    <html lang="en" suppressHydrationWarning className="dark" style={{ colorScheme: 'dark' }}>
+    <html lang="en" suppressHydrationWarning className="" style={{ colorScheme: 'light' }}>
       <body
         className={cn(
           'antialiased',
@@ -29,7 +29,7 @@ export default async function RootLayout({
       >
         <ThemeProvider
           attribute={['class']}
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem={false}
           disableTransitionOnChange
         >

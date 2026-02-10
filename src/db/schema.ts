@@ -6,7 +6,13 @@ import z from 'zod';
 export { user, account, verification } from './auth_schema';
 
 export const CATEGORY_ENUM_SCHEMA = z.enum(['biodegradable', 'non-biodegradable', 'other']);
-export const STATUS_ENUM_SCHEMA = z.enum(['open', 'in_progress', 'resolved', 'closed', 'under_review']);
+export const STATUS_ENUM_SCHEMA = z.enum([
+  'open',
+  'in_progress',
+  'resolved',
+  'closed',
+  'under_review'
+]);
 
 export const complaints = pgTable('complaints', {
   id: uuid().primaryKey().defaultRandom(),
