@@ -2,7 +2,7 @@
 
 - [x] Add a role `worker`
 - [x] Refactor the Sidebar component to be common on both `UserDash` and `AdminDash`
-- [ ] Add a super admin role
+- [x] Add a super admin role
 - **SuperAdmin Permissions**
 - It could assign other admin users, workers.
 - Have all the Permissions that a usual admin user would have.

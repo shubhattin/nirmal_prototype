@@ -18,6 +18,7 @@ export const protectedUnverifiedProcedure = publicProcedure.use(async function i
   });
 });
 
+/** Logged in users */
 export const protectedProcedure = publicProcedure.use(async function isAuthed({
   next,
   ctx: { user }
@@ -28,12 +29,37 @@ export const protectedProcedure = publicProcedure.use(async function isAuthed({
   });
 });
 
+/** role `worker` user */
+export const protectedWorkerProcedure = protectedProcedure.use(async function isAuthed({
+  next,
+  ctx: { user }
+}) {
+  if (user.role !== 'worker')
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not a Worker User' });
+  return next({
+    ctx: { user }
+  });
+});
+
+/** Allow both admin and super admin users */
 export const protectedAdminProcedure = protectedProcedure.use(async function isAuthed({
   next,
   ctx: { user }
 }) {
-  if (user.role !== 'admin')
+  if (user.role !== 'admin' && user.role !== 'super_admin')
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not a Admin User' });
+  return next({
+    ctx: { user }
+  });
+});
+
+/** Only super admin users */
+export const protectedSuperAdminProcedure = protectedProcedure.use(async function isAuthed({
+  next,
+  ctx: { user }
+}) {
+  if (user.role !== 'super_admin')
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not Super a Admin User' });
   return next({
     ctx: { user }
   });
