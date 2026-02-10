@@ -78,6 +78,7 @@ import Link from 'next/link';
 import { AvatarImage } from '@/components/ui/avatar';
 import { LogOut } from 'lucide-react';
 import React from 'react';
+import { NotificationBell } from '~/components/NotificationBell';
 
 const myComplaints = [
   { month: 'Jan', open: 1, resolved: 2, total: 3, satisfaction: 4.2 },
@@ -361,12 +362,15 @@ export default function UserDashPage() {
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-16 items-center gap-3 border-b bg-background px-4">
-          <SidebarTrigger className="-ml-1" />
-          <div className="flex flex-col">
-            <h1 className="text-lg leading-tight font-semibold">{currentTitle}</h1>
-            <p className="text-xs text-muted-foreground">{currentSubtitle}</p>
+        <header className="flex h-16 items-center justify-between border-b bg-background px-4">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex flex-col">
+              <h1 className="text-lg leading-tight font-semibold">{currentTitle}</h1>
+              <p className="text-xs text-muted-foreground">{currentSubtitle}</p>
+            </div>
           </div>
+          <NotificationBell />
         </header>
         <main className="flex-1 px-4 py-6">
           {activeTab === 'dashboard' && (

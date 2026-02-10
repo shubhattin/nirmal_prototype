@@ -58,7 +58,7 @@ export const user_data = pgTable('user_data', {
 
 export const notifications = pgTable('notifications', {
   id: serial().primaryKey(),
-  /** sent to the user id, */
+  /** sent to the user id */
   user_id: text()
     .references(() => user.id)
     .notNull(),
@@ -67,6 +67,8 @@ export const notifications = pgTable('notifications', {
     .notNull(),
   /** Optional complaint id to which it is connected */
   complaint_id: uuid().references(() => complaints.id),
+  /** Optional action id to which it is connected */
+  action_id: integer().references(() => actions.id),
   read: boolean().notNull().default(false),
   title: text().notNull(),
   description: text(),
@@ -89,6 +91,8 @@ export const actions = pgTable('actions', {
     .default('in_progress')
     .$type<z.infer<typeof ACTION_STATUS_ENUM_SCHEMA>>(),
   s3_image_key: text(),
+  /** Admin notes / retry instructions */
+  admin_notes: text(),
   created_at: timestamp().notNull().defaultNow(),
   updated_at: timestamp()
     .notNull()
@@ -98,7 +102,8 @@ export const actions = pgTable('actions', {
 // relations
 
 export const userRelations = relations(user, ({ many }) => ({
-  complaints: many(complaints)
+  complaints: many(complaints),
+  notifications: many(notifications)
 }));
 
 export const complaintRelations = relations(complaints, ({ one, many }) => ({
@@ -106,12 +111,33 @@ export const complaintRelations = relations(complaints, ({ one, many }) => ({
     fields: [complaints.user_id],
     references: [user.id]
   }),
-  actions: many(actions)
+  actions: many(actions),
+  notifications: many(notifications)
 }));
 
-export const actionRelation = relations(actions, ({ one }) => ({
+export const actionRelations = relations(actions, ({ one, many }) => ({
   complaint: one(complaints, {
     fields: [actions.complaint_id],
     references: [complaints.id]
+  }),
+  worker: one(user, {
+    fields: [actions.assigned_worker_id],
+    references: [user.id]
+  }),
+  notifications: many(notifications)
+}));
+
+export const notificationRelations = relations(notifications, ({ one }) => ({
+  user: one(user, {
+    fields: [notifications.user_id],
+    references: [user.id]
+  }),
+  complaint: one(complaints, {
+    fields: [notifications.complaint_id],
+    references: [complaints.id]
+  }),
+  action: one(actions, {
+    fields: [notifications.action_id],
+    references: [actions.id]
   })
 }));

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { Sparkles, Menu, X, Zap, User, Settings } from 'lucide-react';
+import { Sparkles, Menu, X, Zap, User, Settings, Bell, Wrench } from 'lucide-react';
 import { FaRecycle } from 'react-icons/fa';
 import React from 'react';
 import { AppContext } from '~/components/AddDataContext';
@@ -12,6 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRouter, usePathname } from 'next/navigation';
 import { signOut } from '~/lib/auth-client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTRPC } from '~/api/client';
+import { NotificationBell } from '~/components/NotificationBell';
 
 export default function NavBar({ className }: { className?: string }) {
   const [open, setOpen] = React.useState(false);
@@ -19,6 +22,7 @@ export default function NavBar({ className }: { className?: string }) {
   const pathname = usePathname();
   const isUserDashboard = pathname === '/user_dashboard';
   const isAdminDashboard = pathname === '/admin_dashboard';
+  const isWorkerDashboard = pathname === '/worker_dashboard';
   const isAbout = pathname === '/about';
   const isHome = pathname === '/';
 
@@ -30,7 +34,7 @@ export default function NavBar({ className }: { className?: string }) {
       )}
     >
       {/* Animated gradient border */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-50" />
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-blue-500 to-transparent opacity-50" />
 
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6">
         <Link
@@ -48,14 +52,14 @@ export default function NavBar({ className }: { className?: string }) {
             className="relative"
           >
             {/* Glowing background */}
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-cyan-500 via-teal-500 to-green-500 opacity-30 blur-lg transition-opacity duration-300 group-hover:opacity-50" />
-            <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-600 via-teal-600 to-green-600 shadow-xl">
+            <div className="absolute inset-0 rounded-xl bg-linear-to-br from-cyan-500 via-teal-500 to-green-500 opacity-30 blur-lg transition-opacity duration-300 group-hover:opacity-50" />
+            <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-xl bg-linear-to-br from-cyan-600 via-teal-600 to-green-600 shadow-xl">
               <FaRecycle className="size-7 text-white" />
             </div>
           </motion.div>
 
           <div className="flex flex-col leading-tight">
-            <span className="bg-gradient-to-r from-cyan-400 via-emerald-500 to-green-400 bg-clip-text text-2xl font-black tracking-tight text-transparent">
+            <span className="bg-linear-to-r from-cyan-400 via-emerald-500 to-green-400 bg-clip-text text-2xl font-black tracking-tight text-transparent">
               Nirmal Setu
             </span>
             <span className="flex items-center gap-1.5 text-sm text-gray-400">
@@ -70,21 +74,33 @@ export default function NavBar({ className }: { className?: string }) {
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
                   href="/user_dashboard"
-                  className="group flex items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-cyan-500/30 hover:bg-gradient-to-r hover:from-cyan-600/20 hover:to-green-600/20 hover:text-white"
+                  className="group flex items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-cyan-500/30 hover:bg-linear-to-r hover:from-cyan-600/20 hover:to-green-600/20 hover:text-white"
                 >
                   <User className="size-5 transition-colors group-hover:text-cyan-400" />
                   <span className="font-medium">Dashboard</span>
                 </Link>
               </motion.div>
             )}
-            {user_info.role === 'admin' && !isAdminDashboard && (
+            {(user_info.role === 'admin' || user_info.role === 'super_admin') &&
+              !isAdminDashboard && (
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    href="/admin_dashboard"
+                    className="group flex items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-green-500/30 hover:bg-linear-to-r hover:from-green-600/20 hover:to-emerald-600/20 hover:text-white"
+                  >
+                    <Settings className="size-5 transition-colors group-hover:text-green-400" />
+                    <span className="font-medium">Admin Panel</span>
+                  </Link>
+                </motion.div>
+              )}
+            {user_info.role === 'worker' && !isWorkerDashboard && (
               <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                 <Link
-                  href="/admin_dashboard"
-                  className="group flex items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-green-500/30 hover:bg-gradient-to-r hover:from-green-600/20 hover:to-emerald-600/20 hover:text-white"
+                  href="/worker_dashboard"
+                  className="group flex items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-cyan-500/30 hover:bg-linear-to-r hover:from-cyan-600/20 hover:to-blue-600/20 hover:text-white"
                 >
-                  <Settings className="size-5 transition-colors group-hover:text-green-400" />
-                  <span className="font-medium">Admin Panel</span>
+                  <Wrench className="size-5 transition-colors group-hover:text-cyan-400" />
+                  <span className="font-medium">Worker Panel</span>
                 </Link>
               </motion.div>
             )}
@@ -96,7 +112,7 @@ export default function NavBar({ className }: { className?: string }) {
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 href="/about"
-                className="group hidden items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-cyan-500/30 hover:bg-gradient-to-r hover:from-cyan-600/20 hover:to-green-600/20 hover:text-white md:flex"
+                className="group hidden items-center gap-2.5 rounded-xl border border-transparent px-4 py-2.5 text-gray-300 transition-all duration-300 hover:border-cyan-500/30 hover:bg-linear-to-r hover:from-cyan-600/20 hover:to-green-600/20 hover:text-white md:flex"
               >
                 <Zap className="size-5 transition-colors group-hover:text-cyan-400" />
                 <span className="font-medium">About</span>
@@ -129,14 +145,17 @@ export default function NavBar({ className }: { className?: string }) {
                 <Button
                   asChild
                   size="sm"
-                  className="bg-gradient-to-r from-cyan-600 to-green-600 font-medium text-white shadow-lg transition-all duration-300 hover:from-cyan-700 hover:to-green-700 hover:shadow-blue-500/25"
+                  className="bg-linear-to-r from-cyan-600 to-green-600 font-medium text-white shadow-lg transition-all duration-300 hover:from-cyan-700 hover:to-green-700 hover:shadow-blue-500/25"
                 >
                   <Link href="/register">Get Started</Link>
                 </Button>
               </motion.div>
             </>
           ) : (
-            (isUserDashboard || isAdminDashboard) && <UserPopover />
+            <div className="flex items-center gap-2">
+              {user_info && <NotificationBell />}
+              {(isUserDashboard || isAdminDashboard || isWorkerDashboard) && <UserPopover />}
+            </div>
           )}
 
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
@@ -176,10 +195,17 @@ export default function NavBar({ className }: { className?: string }) {
                 <span>User Dashboard</span>
               </MobileLink>
             )}
-            {user_info?.role === 'admin' && !isAdminDashboard && (
-              <MobileLink href="/admin_dashboard" onClick={() => setOpen(false)}>
-                <Settings className="size-5 text-green-400" />
-                <span>Admin Dashboard</span>
+            {(user_info?.role === 'admin' || user_info?.role === 'super_admin') &&
+              !isAdminDashboard && (
+                <MobileLink href="/admin_dashboard" onClick={() => setOpen(false)}>
+                  <Settings className="size-5 text-green-400" />
+                  <span>Admin Dashboard</span>
+                </MobileLink>
+              )}
+            {user_info?.role === 'worker' && !isWorkerDashboard && (
+              <MobileLink href="/worker_dashboard" onClick={() => setOpen(false)}>
+                <Wrench className="size-5 text-cyan-400" />
+                <span>Worker Dashboard</span>
               </MobileLink>
             )}
 
@@ -195,7 +221,7 @@ export default function NavBar({ className }: { className?: string }) {
                   </Button>
                   <Button
                     asChild
-                    className="flex-1 bg-gradient-to-r from-cyan-600 to-green-600 text-white hover:from-cyan-700 hover:to-green-700"
+                    className="flex-1 bg-linear-to-r from-cyan-600 to-green-600 text-white hover:from-cyan-700 hover:to-green-700"
                   >
                     <Link href="/register">Get Started</Link>
                   </Button>
@@ -230,7 +256,7 @@ function MobileLink({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl px-4 py-3 text-gray-300 transition-all duration-300 hover:bg-gradient-to-r hover:from-gray-800/50 hover:to-gray-700/50 hover:text-white"
+      className="flex items-center gap-3 rounded-xl px-4 py-3 text-gray-300 transition-all duration-300 hover:bg-linear-to-r hover:from-gray-800/50 hover:to-gray-700/50 hover:text-white"
     >
       {children}
     </Link>
@@ -269,8 +295,8 @@ function UserPopover() {
         > */}
         <div className="relative">
           {/* Glowing avatar background */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500 to-green-500 opacity-30 blur" />
-          <Avatar className="relative size-8 bg-gradient-to-br from-cyan-600 to-green-600">
+          <div className="absolute inset-0 rounded-full bg-linear-to-br from-cyan-500 to-green-500 opacity-30 blur" />
+          <Avatar className="relative size-8 bg-linear-to-br from-cyan-600 to-green-600">
             <AvatarFallback className="bg-transparent text-sm font-bold text-white">
               {initials || 'U'}
             </AvatarFallback>
@@ -289,8 +315,8 @@ function UserPopover() {
         <div className="p-6">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-cyan-500 to-green-500 opacity-40 blur" />
-              <Avatar className="relative size-12 bg-gradient-to-br from-cyan-600 to-green-600">
+              <div className="absolute inset-0 rounded-full bg-linear-to-br from-cyan-500 to-green-500 opacity-40 blur" />
+              <Avatar className="relative size-12 bg-linear-to-br from-cyan-600 to-green-600">
                 <AvatarFallback className="bg-transparent font-bold text-white">
                   {initials || 'U'}
                 </AvatarFallback>

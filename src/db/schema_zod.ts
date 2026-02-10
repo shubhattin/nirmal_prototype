@@ -12,7 +12,7 @@ import {
 } from './schema';
 import { createSelectSchema } from 'drizzle-zod';
 
-export { CATEGORY_ENUM_SCHEMA, STATUS_ENUM_SCHEMA };
+export { CATEGORY_ENUM_SCHEMA, STATUS_ENUM_SCHEMA, ACTION_STATUS_ENUM_SCHEMA };
 
 export const UserSchemaZod = createSelectSchema(user, {
   createdAt: z.coerce.date(),

@@ -28,7 +28,18 @@ import {
   Funnel
 } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, AlertCircle, ClipboardList, Timer, LogOut } from 'lucide-react';
+import {
+  CheckCircle2,
+  AlertCircle,
+  ClipboardList,
+  Timer,
+  LogOut,
+  Crown,
+  Wrench,
+  Users,
+  Search,
+  Eye
+} from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -70,7 +81,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { inferRouterOutputs } from '@trpc/server';
 import { useTRPC } from '~/api/client';
 import { toast } from 'sonner';
-import React, { useContext, useState } from 'react';
+import React, { useCallback, useContext, useState } from 'react';
 import {
   Sidebar,
   SidebarContent,
@@ -96,6 +107,12 @@ import { signOut } from '~/lib/auth-client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { AppRouter } from '~/api/trpc_router';
+import { motion, AnimatePresence } from 'framer-motion';
+import UserManagement from './UserManagement';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { NotificationBell } from '~/components/NotificationBell';
 
 const trendData = [
   { month: 'Jan', raised: 120, resolved: 80, pending: 40, avgResolutionTime: 32 },
@@ -194,6 +211,8 @@ function AdminMain() {
   const [complaintToDelete, setComplaintToDelete] = useState<string | null>(null);
   const [reviewComplaintId, setReviewComplaintId] = useState<string | null>(null);
   const [closeDialogComplaintId, setCloseDialogComplaintId] = useState<string | null>(null);
+  const [workerSearchQuery, setWorkerSearchQuery] = useState('');
+  const [rejectNotes, setRejectNotes] = useState('');
 
   const complaints_q = useQuery(trpc.complaints.list_complaints.queryOptions());
 
@@ -287,6 +306,74 @@ function AdminMain() {
   ) => {
     update_status_mut.mutate({ id, status });
   };
+
+  const invalidateComplaints = async () => {
+    await queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+        return (
+          Array.isArray(key) &&
+          key.length > 0 &&
+          Array.isArray(key[0]) &&
+          key[0][0] === 'complaints' &&
+          key[0][1] === 'list_complaints'
+        );
+      }
+    });
+  };
+
+  // Worker search for assignment
+  const workerSearchQuery_q = useQuery(
+    trpc.super_admin.search_users.queryOptions(
+      { query: workerSearchQuery, roleFilter: 'worker' },
+      { enabled: workerSearchQuery.length >= 1 }
+    )
+  );
+
+  const assign_worker_mut = useMutation(
+    trpc.complaints.assign_worker.mutationOptions({
+      onSuccess: async () => {
+        await invalidateComplaints();
+        toast.success('Worker assigned successfully');
+        setWorkerSearchQuery('');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to assign worker');
+      }
+    })
+  );
+
+  const review_action_mut = useMutation(
+    trpc.complaints.review_action.mutationOptions({
+      onSuccess: async () => {
+        await invalidateComplaints();
+        toast.success('Action reviewed successfully');
+        setRejectNotes('');
+      },
+      onError: (error) => {
+        toast.error(error.message || 'Failed to review action');
+      }
+    })
+  );
+
+  // Action evidence image query
+  const latestAction = reviewComplaint?.actions?.[0];
+  const actionImageQuery = useQuery<string>({
+    queryKey: ['action-image', latestAction?.id, latestAction?.s3_image_key],
+    queryFn: async () => {
+      if (!latestAction?.id) throw new Error('No action');
+      const res = await fetch('/api/action_image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ actionId: latestAction.id })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || !payload?.url) throw new Error(payload?.message ?? 'Failed to load image');
+      return payload.url;
+    },
+    enabled: Boolean(reviewDialogOpen && latestAction?.s3_image_key),
+    staleTime: 1000 * 60 * 4
+  });
 
   const handleDeleteClick = (id: string) => {
     setComplaintToDelete(id);
@@ -1079,6 +1166,143 @@ function AdminMain() {
                   <p className="text-sm text-muted-foreground">Image not attached.</p>
                 )}
               </div>
+
+              {/* Actions / Worker Assignment */}
+              {reviewComplaint.actions && reviewComplaint.actions.length > 0 && (
+                <div className="space-y-3 rounded-lg border border-cyan-900/30 bg-cyan-950/10 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-cyan-300">
+                    <Wrench className="h-4 w-4" /> Worker Actions
+                  </p>
+                  {reviewComplaint.actions.map((action: any) => (
+                    <div
+                      key={action.id}
+                      className="space-y-2 rounded-md border border-border/50 bg-background/50 p-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Worker:</span>
+                          <span className="text-sm font-medium">
+                            {action.worker?.name ?? 'Unknown'}
+                          </span>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            action.status === 'resolved'
+                              ? 'border-emerald-700 bg-emerald-900/30 text-emerald-400'
+                              : action.status === 'under_review'
+                                ? 'border-purple-700 bg-purple-900/30 text-purple-300'
+                                : action.status === 'closed'
+                                  ? 'border-red-700 bg-red-900/30 text-red-300'
+                                  : 'border-amber-700 bg-amber-900/30 text-amber-300'
+                          }`}
+                        >
+                          {action.status === 'in_progress'
+                            ? 'In Progress'
+                            : action.status === 'under_review'
+                              ? 'Under Review'
+                              : action.status === 'resolved'
+                                ? 'Resolved'
+                                : 'Closed'}
+                        </Badge>
+                      </div>
+                      {action.admin_notes && (
+                        <p className="rounded bg-muted/30 p-2 text-xs text-muted-foreground">
+                          <span className="font-medium">Admin Notes:</span> {action.admin_notes}
+                        </p>
+                      )}
+                      {action.s3_image_key && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">Worker Evidence:</p>
+                          {actionImageQuery.isLoading && action.id === latestAction?.id ? (
+                            <Skeleton className="h-32 w-full rounded-md" />
+                          ) : actionImageQuery.data && action.id === latestAction?.id ? (
+                            <img
+                              src={actionImageQuery.data}
+                              alt="Worker evidence"
+                              className="max-h-48 w-full rounded-md border object-cover"
+                            />
+                          ) : null}
+                        </div>
+                      )}
+                      {action.status === 'under_review' && (
+                        <div className="flex flex-col gap-2 border-t border-border/30 pt-2">
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 text-white hover:bg-emerald-600/90"
+                              onClick={() =>
+                                review_action_mut.mutate({ actionId: action.id, approved: true })
+                              }
+                              disabled={review_action_mut.isPending}
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                review_action_mut.mutate({
+                                  actionId: action.id,
+                                  approved: false,
+                                  notes: rejectNotes || undefined
+                                });
+                              }}
+                              disabled={review_action_mut.isPending}
+                            >
+                              <XCircle className="mr-1 h-3 w-3" /> Reject & Retry
+                            </Button>
+                          </div>
+                          <Textarea
+                            placeholder="Optional notes for rejection / retry instructions..."
+                            value={rejectNotes}
+                            onChange={(e) => setRejectNotes(e.target.value)}
+                            className="h-16 resize-none text-xs"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Worker Assignment */}
+              {reviewComplaint.status !== 'resolved' && reviewComplaint.status !== 'closed' && (
+                <div className="space-y-2 rounded-lg border border-amber-900/30 bg-amber-950/10 p-4">
+                  <p className="text-sm font-semibold text-amber-300">Assign Worker</p>
+                  <div className="relative">
+                    <Search className="absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search workers by name..."
+                      value={workerSearchQuery}
+                      onChange={(e) => setWorkerSearchQuery(e.target.value)}
+                      className="h-9 bg-background/50 pl-9 text-sm"
+                    />
+                  </div>
+                  {workerSearchQuery_q.data && workerSearchQuery_q.data.length > 0 && (
+                    <div className="max-h-32 space-y-1 overflow-y-auto rounded-md border bg-background/50 p-1">
+                      {workerSearchQuery_q.data.map((w: any) => (
+                        <button
+                          key={w.id}
+                          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                          onClick={() => {
+                            assign_worker_mut.mutate({
+                              complaintId: reviewComplaint.id,
+                              workerId: w.id
+                            });
+                          }}
+                          disabled={assign_worker_mut.isPending}
+                        >
+                          <Wrench className="h-3.5 w-3.5 shrink-0 text-cyan-400" />
+                          <span className="font-medium">{w.name}</span>
+                          <span className="text-xs text-muted-foreground">{w.email}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <DialogFooter className="flex flex-wrap gap-3">
                 {reviewComplaint.status !== 'resolved' && reviewComplaint.status !== 'closed' && (
                   <>
@@ -1190,6 +1414,8 @@ export default function AdminDashPage() {
   const userName = user_info?.name || 'Admin';
   const userEmail = user_info?.email || '';
   const userImage = user_info?.image;
+  const isSuperAdmin = user_info?.role === 'super_admin';
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users'>('dashboard');
   const userInitials = userName
     .split(' ')
     .map((n) => n[0])
@@ -1233,9 +1459,10 @@ export default function AdminDashPage() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     size="lg"
-                    isActive
+                    isActive={activeTab === 'dashboard'}
                     tooltip="Admin Dashboard"
-                    className="justify-start gap-3 rounded-lg bg-linear-to-r from-emerald-500/20 to-emerald-600/10 px-3 text-emerald-100 shadow-md ring-1 ring-emerald-500/30 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 hover:from-emerald-500/25 hover:to-emerald-600/15"
+                    onClick={() => setActiveTab('dashboard')}
+                    className={`justify-start gap-3 rounded-lg px-3 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 ${activeTab === 'dashboard' ? 'bg-linear-to-r from-emerald-500/20 to-emerald-600/10 text-emerald-100 shadow-md ring-1 ring-emerald-500/30 hover:from-emerald-500/25 hover:to-emerald-600/15' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent'}`}
                   >
                     <RiDashboardFill className="h-5 w-5 shrink-0 text-emerald-400" />
                     <span className="font-medium group-data-[collapsible=icon]:hidden">
@@ -1243,6 +1470,22 @@ export default function AdminDashPage() {
                     </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                {isSuperAdmin && (
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      size="lg"
+                      isActive={activeTab === 'users'}
+                      tooltip="User Management"
+                      onClick={() => setActiveTab('users')}
+                      className={`justify-start gap-3 rounded-lg px-3 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 ${activeTab === 'users' ? 'bg-linear-to-r from-purple-500/20 to-purple-600/10 text-purple-100 shadow-md ring-1 ring-purple-500/30 hover:from-purple-500/25 hover:to-purple-600/15' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent'}`}
+                    >
+                      <Users className="h-5 w-5 shrink-0 text-purple-400" />
+                      <span className="font-medium group-data-[collapsible=icon]:hidden">
+                        User Management
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -1278,17 +1521,46 @@ export default function AdminDashPage() {
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="flex h-16 items-center gap-3 border-b bg-background px-4">
-          <SidebarTrigger className="-ml-1" />
-          <div className="flex flex-col">
-            <h1 className="text-lg leading-tight font-semibold">Admin Dashboard</h1>
-            <p className="text-xs text-muted-foreground">
-              Monitor and manage complaints, performance, and operations.
-            </p>
+        <header className="flex h-16 items-center justify-between border-b bg-background px-4">
+          <div className="flex items-center gap-3">
+            <SidebarTrigger className="-ml-1" />
+            <div className="flex flex-col">
+              <h1 className="text-lg leading-tight font-semibold">
+                {activeTab === 'dashboard' ? 'Admin Dashboard' : 'User Management'}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {activeTab === 'dashboard'
+                  ? 'Monitor and manage complaints, performance, and operations.'
+                  : 'Search users and manage roles across the platform.'}
+              </p>
+            </div>
           </div>
+          <NotificationBell />
         </header>
         <main className="flex-1 p-2 md:p-6">
-          <AdminMain />
+          <AnimatePresence mode="wait">
+            {activeTab === 'dashboard' ? (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <AdminMain />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="users"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <UserManagement />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </SidebarInset>
     </SidebarProvider>
