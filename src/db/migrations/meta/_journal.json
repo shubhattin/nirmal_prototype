@@ -36,6 +36,13 @@
       "when": 1767881258573,
       "tag": "0004_lyrical_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1770750174283,
+      "tag": "0005_fearless_ares",
+      "breakpoints": true
     }
   ]
 }
