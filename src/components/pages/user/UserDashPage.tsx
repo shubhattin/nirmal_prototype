@@ -79,6 +79,9 @@ import { AvatarImage } from '@/components/ui/avatar';
 import { LogOut } from 'lucide-react';
 import React from 'react';
 import { NotificationBell } from '~/components/NotificationBell';
+import { NotificationsTab } from '~/components/NotificationsTab';
+import { Bell } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const myComplaints = [
   { month: 'Jan', open: 1, resolved: 2, total: 3, satisfaction: 4.2 },
@@ -122,7 +125,13 @@ const environmentalImpact = [
 
 const monthlyGoal = 500;
 
-type UserDashboardTab = 'dashboard' | 'complaint' | 'game' | 'assistant' | 'pickup';
+type UserDashboardTab =
+  | 'dashboard'
+  | 'complaint'
+  | 'game'
+  | 'assistant'
+  | 'pickup'
+  | 'notifications';
 
 export default function UserDashPage() {
   const trpc = useTRPC();
@@ -130,6 +139,8 @@ export default function UserDashPage() {
 
   const complaints_q = useQuery(trpc.complaints.list_complaints.queryOptions());
   const reward_points_q = useQuery(trpc.complaints.user_reward_points.queryOptions());
+  const unreadCountQuery = useQuery(trpc.worker.unread_count.queryOptions());
+  const unreadCount = unreadCountQuery.data?.count ?? 0;
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -155,6 +166,7 @@ export default function UserDashPage() {
     if (tabParam === 'game') return 'game';
     if (tabParam === 'assistant') return 'assistant';
     if (tabParam === 'pickup') return 'pickup';
+    if (tabParam === 'notifications') return 'notifications';
     return 'dashboard';
   });
 
@@ -167,7 +179,9 @@ export default function UserDashPage() {
           ? 'Gamified Learning'
           : activeTab === 'assistant'
             ? 'ShuchiAI Assistant'
-            : 'Pickup Missed';
+            : activeTab === 'pickup'
+              ? 'Pickup Missed'
+              : 'Notifications';
   const currentSubtitle =
     activeTab === 'dashboard'
       ? 'Overview of your activity, complaints, and locality insights.'
@@ -177,7 +191,9 @@ export default function UserDashPage() {
           ? 'Learn waste segregation through an interactive game.'
           : activeTab === 'assistant'
             ? 'Chat with ShuchiAI for help with complaints, insights, and rewards.'
-            : 'Report missed waste collection and contact authorities.';
+            : activeTab === 'pickup'
+              ? 'Report missed waste collection and contact authorities.'
+              : 'Stay updated on your complaint status and community news.';
 
   return (
     <SidebarProvider>
@@ -327,6 +343,41 @@ export default function UserDashPage() {
                     </span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
+                    isActive={activeTab === 'notifications'}
+                    onClick={() => setActiveTab('notifications')}
+                    tooltip="Notifications"
+                    className={cn(
+                      'justify-start gap-3 rounded-lg px-3 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0',
+                      activeTab === 'notifications'
+                        ? 'bg-linear-to-r from-emerald-500/20 to-emerald-600/10 text-emerald-100 shadow-md ring-1 ring-emerald-500/30 hover:from-emerald-500/25 hover:to-emerald-600/15'
+                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    )}
+                  >
+                    <div className="relative">
+                      <Bell
+                        className={cn(
+                          'h-5 w-5 shrink-0',
+                          activeTab === 'notifications' ? 'text-emerald-400' : 'text-blue-500'
+                        )}
+                      />
+                      {unreadCount > 0 && (
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                        >
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </motion.span>
+                      )}
+                    </div>
+                    <span className="font-medium group-data-[collapsible=icon]:hidden">
+                      Notifications
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -380,6 +431,7 @@ export default function UserDashPage() {
           {activeTab === 'game' && <GamifiedLearningTab />}
           {activeTab === 'assistant' && <ShuchiAITab />}
           {activeTab === 'pickup' && <PickupMissedTab />}
+          {activeTab === 'notifications' && <NotificationsTab />}
         </main>
       </SidebarInset>
     </SidebarProvider>

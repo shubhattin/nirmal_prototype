@@ -113,6 +113,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { NotificationBell } from '~/components/NotificationBell';
+import { NotificationsTab } from '~/components/NotificationsTab';
+import { Bell } from 'lucide-react';
 
 const trendData = [
   { month: 'Jan', raised: 120, resolved: 80, pending: 40, avgResolutionTime: 32 },
@@ -1415,7 +1417,10 @@ export default function AdminDashPage() {
   const userEmail = user_info?.email || '';
   const userImage = user_info?.image;
   const isSuperAdmin = user_info?.role === 'super_admin';
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'notifications'>('dashboard');
+  const trpc = useTRPC();
+  const unreadCountQuery = useQuery(trpc.worker.unread_count.queryOptions());
+  const unreadCount = unreadCountQuery.data?.count ?? 0;
   const userInitials = userName
     .split(' ')
     .map((n) => n[0])
@@ -1486,6 +1491,31 @@ export default function AdminDashPage() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )}
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
+                    isActive={activeTab === 'notifications'}
+                    tooltip="Notifications"
+                    onClick={() => setActiveTab('notifications')}
+                    className={`justify-start gap-3 rounded-lg px-3 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 ${activeTab === 'notifications' ? 'bg-linear-to-r from-cyan-500/20 to-cyan-600/10 text-cyan-100 shadow-md ring-1 ring-cyan-500/30 hover:from-cyan-500/25 hover:to-cyan-600/15' : 'text-sidebar-foreground/80 hover:bg-sidebar-accent'}`}
+                  >
+                    <div className="relative">
+                      <Bell className="h-5 w-5 shrink-0 text-cyan-400" />
+                      {unreadCount > 0 && (
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white"
+                        >
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </motion.span>
+                      )}
+                    </div>
+                    <span className="font-medium group-data-[collapsible=icon]:hidden">
+                      Notifications
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -1526,12 +1556,18 @@ export default function AdminDashPage() {
             <SidebarTrigger className="-ml-1" />
             <div className="flex flex-col">
               <h1 className="text-lg leading-tight font-semibold">
-                {activeTab === 'dashboard' ? 'Admin Dashboard' : 'User Management'}
+                {activeTab === 'dashboard'
+                  ? 'Admin Dashboard'
+                  : activeTab === 'users'
+                    ? 'User Management'
+                    : 'Notifications'}
               </h1>
               <p className="text-xs text-muted-foreground">
                 {activeTab === 'dashboard'
                   ? 'Monitor and manage complaints, performance, and operations.'
-                  : 'Search users and manage roles across the platform.'}
+                  : activeTab === 'users'
+                    ? 'Search users and manage roles across the platform.'
+                    : 'Stay updated on system alerts and user reports.'}
               </p>
             </div>
           </div>
@@ -1549,7 +1585,7 @@ export default function AdminDashPage() {
               >
                 <AdminMain />
               </motion.div>
-            ) : (
+            ) : activeTab === 'users' ? (
               <motion.div
                 key="users"
                 initial={{ opacity: 0, y: 10 }}
@@ -1558,6 +1594,16 @@ export default function AdminDashPage() {
                 transition={{ duration: 0.2 }}
               >
                 <UserManagement />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="notifications"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <NotificationsTab />
               </motion.div>
             )}
           </AnimatePresence>
