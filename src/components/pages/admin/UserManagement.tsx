@@ -214,7 +214,7 @@ export default function UserManagement() {
                         onValueChange={(val) =>
                           changeRoleMut.mutate({
                             userId: u.id,
-                            role: val as RoleKey
+                            role: val as Exclude<RoleKey, 'super_admin'>
                           })
                         }
                         disabled={changeRoleMut.isPending}

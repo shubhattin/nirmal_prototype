@@ -51,7 +51,7 @@ const change_user_role_route = protectedSuperAdminProcedure
   .input(
     z.object({
       userId: z.string(),
-      role: ROLE_ENUM
+      role: ROLE_ENUM.exclude(['super_admin'])
     })
   )
   .mutation(async ({ ctx, input }) => {
