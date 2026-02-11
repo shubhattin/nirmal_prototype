@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const getUserComplaintsTool = {
     description:
-      'Fetch up to 10 latest complaints for the currently authenticated user, with resolved_at converted to IST (Asia/Kolkata).',
+      'Fetch up to 10 latest complaints for the currently authenticated user, with resolved_at converted to IST (Asia/Kolkata), plus action summary and associated action status.',
     inputSchema: z.object({
       limit: z
         .number()
@@ -84,14 +84,61 @@ const getUserComplaints = async (user_id: string, limit: number = LIMIT) => {
       category: true,
       id: true,
       description: true
+    },
+    with: {
+      actions: {
+        columns: {
+          status: true,
+          admin_notes: true,
+          created_at: true
+        }
+      }
     }
   });
 
   return data.map((complaint) => ({
     ...complaint,
+    actions_summary: summarizeActions(complaint.actions),
+    latest_action_status: getLatestActionStatus(complaint.actions),
     resolved_at: formatToIST(complaint.resolved_at),
-    id: complaint.id.toString().substring(0, 5)
+    id: complaint.id.toString().substring(0, 5),
+    actions: complaint.actions.map((action) => ({
+      ...action,
+      created_at: formatToIST(action.created_at)
+    }))
   }));
+};
+
+const summarizeActions = (
+  actions: Array<{ status: string; admin_notes: string | null; created_at: Date }>
+) => {
+  if (!actions.length) return 'No actions logged yet.';
+
+  const statusCounts = actions.reduce<Record<string, number>>((acc, action) => {
+    acc[action.status] = (acc[action.status] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const statusSummary = Object.entries(statusCounts)
+    .map(([status, count]) => `${status}: ${count}`)
+    .join(', ');
+
+  const notedActionsCount = actions.filter((action) => action.admin_notes?.trim()).length;
+  const notesSummary =
+    notedActionsCount > 0 ? `, notes on ${notedActionsCount} action(s)` : ', no admin notes';
+
+  return `${actions.length} action(s) (${statusSummary}${notesSummary})`;
+};
+
+const getLatestActionStatus = (
+  actions: Array<{ status: string; created_at: Date }>
+): string | null => {
+  if (!actions.length) return null;
+
+  const latestAction = actions.reduce((latest, current) =>
+    current.created_at > latest.created_at ? current : latest
+  );
+  return latestAction.status;
 };
 
 const SYSTEM_PROMPT = `
@@ -114,6 +161,7 @@ Interaction style
 - Be concise, friendly, and action‑oriented. Prefer bullet points and numbered steps.
 - Ask at most 1–2 clarifying questions before long answers when the request is ambiguous (e.g., ask for location or complaint ID).
 - Keep responses skimmable with short paragraphs and clear section headers when helpful.
+- Allow user to change conversation language to English or an Indian Language
 
 Data and tools
 - Use available tools to read or modify complaint data, reward balances, and statuses. Never fabricate records or IDs.
@@ -141,6 +189,8 @@ Do not answer any question that is not related to the app or the services provid
 ## Tool Call behaviour
 - You can tool access view 10 latest complaints by the user.
 - When asked by user to summarise, view complaints use the tool for that.
+- Tool output includes complaint status, action summary (\`actions_summary\`), latest action status (\`latest_action_status\`), and action-level statuses in \`actions\`.
+- While summarising complaints, explicitly include both complaint status and latest action status for each complaint.
 - You will receive timestampt in ISO. Format the time properly in this format : 8th Dec, 1:23 pm
 - Present data in a table format with proper headings and values.
 - If asked by user then elaborate the data. Also prompt the user if they need more info for a particular complaint.
