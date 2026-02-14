@@ -82,6 +82,7 @@ import { NotificationBell } from '~/components/NotificationBell';
 import { NotificationsTab } from '~/components/NotificationsTab';
 import { Bell } from 'lucide-react';
 import { motion } from 'framer-motion';
+import UserRewards from './UserRewards';
 
 const myComplaints = [
   { month: 'Jan', open: 1, resolved: 2, total: 3, satisfaction: 4.2 },
@@ -131,6 +132,7 @@ type UserDashboardTab =
   | 'game'
   | 'assistant'
   | 'pickup'
+  | 'rewards'
   | 'notifications';
 
 export default function UserDashPage() {
@@ -166,6 +168,7 @@ export default function UserDashPage() {
     if (tabParam === 'game') return 'game';
     if (tabParam === 'assistant') return 'assistant';
     if (tabParam === 'pickup') return 'pickup';
+    if (tabParam === 'rewards') return 'rewards';
     if (tabParam === 'notifications') return 'notifications';
     return 'dashboard';
   });
@@ -181,7 +184,9 @@ export default function UserDashPage() {
             ? 'ShuchiAI Assistant'
             : activeTab === 'pickup'
               ? 'Pickup Missed'
-              : 'Notifications';
+              : activeTab === 'rewards'
+                ? 'Rewards & Tiers'
+                : 'Notifications';
   const currentSubtitle =
     activeTab === 'dashboard'
       ? 'Overview of your activity, complaints, and locality insights.'
@@ -193,7 +198,9 @@ export default function UserDashPage() {
             ? 'Chat with ShuchiAI for help with complaints, insights, and rewards.'
             : activeTab === 'pickup'
               ? 'Report missed waste collection and contact authorities.'
-              : 'Stay updated on your complaint status and community news.';
+              : activeTab === 'rewards'
+                ? 'Track your reward points, unlock tiers, and access exclusive perks.'
+                : 'Stay updated on your complaint status and community news.';
 
   return (
     <SidebarProvider>
@@ -346,6 +353,42 @@ export default function UserDashPage() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     size="lg"
+                    isActive={activeTab === 'rewards'}
+                    onClick={() => setActiveTab('rewards')}
+                    tooltip="Rewards & Tiers"
+                    className={cn(
+                      'justify-start gap-3 rounded-lg px-3 transition-all duration-200 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0',
+                      activeTab === 'rewards'
+                        ? 'bg-linear-to-r from-emerald-500/20 to-emerald-600/10 text-emerald-100 shadow-md ring-1 ring-emerald-500/30 hover:from-emerald-500/25 hover:to-emerald-600/15'
+                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    )}
+                  >
+                    <motion.div
+                      animate={{
+                        scale: [1, 1.15, 1],
+                        rotate: [0, 8, -8, 0]
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: 'easeInOut'
+                      }}
+                    >
+                      <Award
+                        className={cn(
+                          'h-5 w-5 shrink-0',
+                          activeTab === 'rewards' ? 'text-emerald-400' : 'text-amber-400'
+                        )}
+                      />
+                    </motion.div>
+                    <span className="font-medium group-data-[collapsible=icon]:hidden">
+                      Rewards
+                    </span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    size="lg"
                     isActive={activeTab === 'notifications'}
                     onClick={() => setActiveTab('notifications')}
                     tooltip="Notifications"
@@ -431,6 +474,15 @@ export default function UserDashPage() {
           {activeTab === 'game' && <GamifiedLearningTab />}
           {activeTab === 'assistant' && <ShuchiAITab />}
           {activeTab === 'pickup' && <PickupMissedTab />}
+          {activeTab === 'rewards' && (
+            <UserRewards
+              rewardPoints={reward_points_q.data?.reward_points ?? 0}
+              isLoading={
+                reward_points_q.isLoading ||
+                (reward_points_q.isPending && !reward_points_q.isSuccess)
+              }
+            />
+          )}
           {activeTab === 'notifications' && <NotificationsTab />}
         </main>
       </SidebarInset>
