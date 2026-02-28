@@ -9,3 +9,7 @@ export default async function WorkerDashboard() {
 
   return <WorkerDash />;
 }
+
+export const metadata = {
+  title: 'Worker Dashboard — Nirmal Setu'
+};

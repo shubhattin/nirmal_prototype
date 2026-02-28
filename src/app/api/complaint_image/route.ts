@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return jsonError('Authentication required', 401);
   }
 
-  if (user.role !== 'admin' && user.role !== 'super_admin') {
+  if (user.role !== 'admin' && user.role !== 'super_admin' && user.role !== 'worker') {
     return jsonError('Forbidden', 403);
   }
 
